@@ -127,11 +127,12 @@ public class MainActivity extends Activity {
         title.setGravity(Gravity.CENTER);
         title.setSingleLine(true);
 
-        TextView sub = Ui.text(this, "TODAS TUS INTELIGENCIAS EN UN SOLO LUGAR", 10.8f, Color.rgb(196,220,246), false);
+        TextView sub = Ui.text(this, "Toda la IA en un solo click", 11.8f, Color.rgb(196,220,246), true);
         sub.setGravity(Gravity.CENTER);
         sub.setSingleLine(true);
-        titles.addView(title, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.18f));
+
         titles.addView(sub, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, .72f));
+        titles.addView(title, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.18f));
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
         tp.setMargins(Ui.dp(this,4),0,Ui.dp(this,7),0);
         header.addView(titles, tp);
