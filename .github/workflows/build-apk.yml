@@ -88,21 +88,48 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          root=Path("build-src/CENTRAL_IA_Android/app/src/main")
-          for p in root.rglob("*"):
-              if p.name == "MainActivity.java":
-                  ls=p.read_text().splitlines()
-                  for a,b in [(105,135),(185,205),(240,265)]:
-                      print(f"RANGE {a}-{b}")
-                      for n in range(a,b+1): print(n,ls[n-1])
-              if p.is_file() and p.suffix in {".kt",".java",".xml"}:
-                  try: t=p.read_text()
-                  except: continue
-                  if any(x in t for x in ["Gestionar IAs","Gestionar IA","AJUSTES","Ajustes","settings"]):
-                      print("\nFILE",p)
-                      for i,line in enumerate(t.splitlines(),1):
-                          if any(x.lower() in line.lower() for x in ["gestionar","ajustes","settings"]):
-                              print(i, line[:500])
+          import re
+          p=Path("build-src/CENTRAL_IA_Android/app/src/main/java/com/juanma/centralia/MainActivity.java")
+          t=p.read_text()
+
+          # Dejar un solo acceso a Ajustes: el de la barra inferior.
+          t=re.sub(r'\n\s*TextView\s+settings\s*=\s*makeRoundButton\("⚙".*?header\.addView\(settings,\s*sp\);', '', t, flags=re.S)
+          t=re.sub(r'\n\s*TextView\s+(?:menu|hamburger)\s*=\s*makeRoundButton\("[☰≡]".*?header\.addView\((?:menu|hamburger).*?\);', '', t, flags=re.S)
+
+          # Quitar Gestionar IAs del escritorio: Favoritos ocupa su lugar y la cuarta celda queda anulada.
+          old='''        } else if (index == 2) {
+            tile = new NeonTile(this, accents[2]);
+            tile.setGlyph("▦", accents[0]);
+            tile.setTitle("Gestionar IAs");
+            tile.setSubtitle("Editar, ordenar y eliminar");
+            tile.setOnClickListener(v -> showManageDialog());
+        } else {
+            tile = new NeonTile(this, accents[3]);
+            tile.setGlyph("☆", accents[3]);
+            tile.setTitle("Favoritos");
+            tile.setSubtitle("Tus IAs preferidas");
+            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });
+        }'''
+          new='''        } else if (index == 2) {
+            tile = new NeonTile(this, accents[3]);
+            tile.setGlyph("☆", accents[3]);
+            tile.setTitle("Favoritos");
+            tile.setSubtitle("Tus IAs preferidas");
+            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });
+        } else {
+            tile = new NeonTile(this, Color.TRANSPARENT);
+            tile.setVisibility(View.INVISIBLE);
+        }'''
+          if old not in t:
+              raise SystemExit("No se encontró el bloque Gestionar/Favoritos esperado")
+          t=t.replace(old,new)
+          p.write_text(t)
+
+          # Recortar el blanco exterior del icono de Mis Prompts si ImageMagick está disponible.
+          import subprocess
+          icons=list(Path("build-src/CENTRAL_IA_Android/app/src/main/res").rglob("mis_prompts_icon.png"))
+          for icon in icons:
+              subprocess.run(["convert",str(icon),"-alpha","on","-fuzz","8%","-transparent","white","-trim","+repage",str(icon)],check=False)
           PY
 
       - name: Build debug APK
