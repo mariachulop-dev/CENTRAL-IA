@@ -2,6 +2,9 @@ package com.juanma.centralia;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.view.View;
@@ -73,7 +76,39 @@ public class NeonTile extends FrameLayout {
     public void setIconResource(int resId) {
         icon.setVisibility(View.VISIBLE);
         glyph.setVisibility(View.GONE);
+        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         icon.setImageResource(resId);
+    }
+
+    public void setIconResourceCropped(int resId) {
+        icon.setVisibility(View.VISIBLE);
+        glyph.setVisibility(View.GONE);
+        try {
+            Bitmap src = BitmapFactory.decodeResource(getResources(), resId).copy(Bitmap.Config.ARGB_8888, true);
+            int w = src.getWidth(), h = src.getHeight();
+            int minX=w, minY=h, maxX=-1, maxY=-1;
+            for (int y=0;y<h;y++) for (int x=0;x<w;x++) {
+                int c=src.getPixel(x,y);
+                int a=Color.alpha(c), r=Color.red(c), g=Color.green(c), b=Color.blue(c);
+                if (a>0 && r>238 && g>238 && b>238) {
+                    src.setPixel(x,y,Color.TRANSPARENT);
+                } else if (Color.alpha(src.getPixel(x,y))>16) {
+                    if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
+                }
+            }
+            Bitmap out=src;
+            if(maxX>=minX && maxY>=minY) {
+                int pad=Math.max(2, Math.min(w,h)/30);
+                int l=Math.max(0,minX-pad), t=Math.max(0,minY-pad);
+                int rr=Math.min(w-1,maxX+pad), bb=Math.min(h-1,maxY+pad);
+                out=Bitmap.createBitmap(src,l,t,rr-l+1,bb-t+1);
+            }
+            icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            icon.setImageDrawable(new BitmapDrawable(getResources(),out));
+        } catch(Exception ex) {
+            icon.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            icon.setImageResource(resId);
+        }
     }
 
     public void setGlyph(String value, int color) {
