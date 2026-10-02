@@ -78,9 +78,26 @@ jobs:
           gradle = Path("build-src/CENTRAL_IA_Android/app/build.gradle")
           text = gradle.read_text()
           import re
-          text = re.sub(r"versionCode\s+\d+", "versionCode 4", text)
-          text = re.sub(r"versionName\s+'[^']+'", "versionName '0.1.3'", text)
+          text = re.sub(r"versionCode\s+\d+", "versionCode 5", text)
+          text = re.sub(r"versionName\s+'[^']+'", "versionName '0.1.4'", text)
           gradle.write_text(text)
+          PY
+
+      - name: Apply UI cleanup v0.1.4
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path("build-src/CENTRAL_IA_Android/app/src/main")
+          for p in root.rglob("*"):
+              if p.is_file() and p.suffix in {".kt",".java",".xml"}:
+                  try: t=p.read_text()
+                  except: continue
+                  if any(x in t for x in ["Gestionar IAs","Gestionar IA","AJUSTES","Ajustes","settings"]):
+                      print("\nFILE",p)
+                      for i,line in enumerate(t.splitlines(),1):
+                          if any(x.lower() in line.lower() for x in ["gestionar","ajustes","settings"]):
+                              print(i, line[:500])
           PY
 
       - name: Build debug APK
@@ -90,13 +107,13 @@ jobs:
       - name: Verify APK exists
         run: |
           test -f build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk
-          cp build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk CENTRAL-IA-v0.1.3-debug.apk
-          ls -lh CENTRAL-IA-v0.1.3-debug.apk
+          cp build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk CENTRAL-IA-v0.1.4-debug.apk
+          ls -lh CENTRAL-IA-v0.1.4-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: CENTRAL-IA-v0.1.3-APK
-          path: CENTRAL-IA-v0.1.3-debug.apk
+          name: CENTRAL-IA-v0.1.4-APK
+          path: CENTRAL-IA-v0.1.4-debug.apk
           if-no-files-found: error
           retention-days: 7
