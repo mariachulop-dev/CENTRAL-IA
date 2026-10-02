@@ -296,7 +296,7 @@ rápidamente a todas tus IAs.",10.3f,Color.rgb(207,220,244),false);
         NeonTile tile;
         if (index == 0) {
             tile = new NeonTile(this, accents[1]);
-            tile.setIconResource(R.drawable.mis_prompts_icon);
+            tile.setIconResourceCropped(R.drawable.mis_prompts_icon);
             tile.setTitle("Mis Prompts");
             tile.setSubtitle("Abrir aplicación");
             tile.setOnClickListener(v -> openMisPrompts());
