@@ -19,7 +19,7 @@ public class AiPagerView extends LinearLayout {
     public interface TileFactory { View make(AiEntry entry); }
     public interface ToolFactory { View make(int index); }
 
-    private static final int AI_PER_PAGE = 9;
+    private static final int AI_PER_PAGE = 6;
     private final FrameLayout pageHost;
     private final LinearLayout dots;
     private final TextView pageText;
@@ -106,7 +106,7 @@ public class AiPagerView extends LinearLayout {
         pageHost.removeAllViews();
         GridLayout grid = new GridLayout(getContext());
         grid.setColumnCount(3);
-        grid.setRowCount(4);
+        grid.setRowCount(3);
         grid.setUseDefaultMargins(false);
         pageHost.addView(grid, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
@@ -117,9 +117,9 @@ public class AiPagerView extends LinearLayout {
             addCell(grid, v, slot / 3, slot % 3);
         }
 
-        addCell(grid, toolFactory.make(0), 3, 0);
-        addCell(grid, toolFactory.make(1), 3, 1);
-        addCell(grid, toolFactory.make(2), 3, 2);
+        addCell(grid, toolFactory.make(0), 2, 0);
+        addCell(grid, toolFactory.make(1), 2, 1);
+        addCell(grid, toolFactory.make(2), 2, 2);
 
         dots.removeAllViews();
         int pages = pageCount();
