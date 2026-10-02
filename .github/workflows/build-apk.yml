@@ -91,7 +91,7 @@ jobs:
           gradle = Path("build-src/CENTRAL_IA_Android/app/build.gradle")
           text = gradle.read_text()
           text = re.sub(r"versionCode\s+\d+", "versionCode 5", text)
-          text = re.sub(r"versionName\s+'[^']+'", "versionName '0.1.4'", text)
+          text = re.sub(r"versionName\s+'[^']+'", "versionName '0.1.5'", text)
           gradle.write_text(text)
           PY
 
@@ -104,14 +104,14 @@ jobs:
         run: |
           APK="build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$APK"
-          cp "$APK" CENTRAL-IA-v0.1.4-debug.apk
-          unzip -l CENTRAL-IA-v0.1.4-debug.apk | grep -E "database_background|mis_prompts_icon|classes"
-          ls -lh CENTRAL-IA-v0.1.4-debug.apk
+          cp "$APK" CENTRAL-IA-v0.1.5-debug.apk
+          unzip -l CENTRAL-IA-v0.1.5-debug.apk | grep -E "database_background|mis_prompts_icon|classes"
+          ls -lh CENTRAL-IA-v0.1.5-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: CENTRAL-IA-v0.1.4-APK
-          path: CENTRAL-IA-v0.1.4-debug.apk
+          name: CENTRAL-IA-v0.1.5-APK
+          path: CENTRAL-IA-v0.1.5-debug.apk
           if-no-files-found: error
           retention-days: 7
