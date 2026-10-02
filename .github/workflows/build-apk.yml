@@ -90,6 +90,11 @@ jobs:
           from pathlib import Path
           root=Path("build-src/CENTRAL_IA_Android/app/src/main")
           for p in root.rglob("*"):
+              if p.name == "MainActivity.java":
+                  ls=p.read_text().splitlines()
+                  for a,b in [(105,135),(185,205),(240,265)]:
+                      print(f"RANGE {a}-{b}")
+                      for n in range(a,b+1): print(n,ls[n-1])
               if p.is_file() and p.suffix in {".kt",".java",".xml"}:
                   try: t=p.read_text()
                   except: continue
