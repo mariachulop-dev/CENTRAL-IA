@@ -91,17 +91,13 @@ public class MainActivity extends Activity {
         root.setPadding(Ui.dp(this,10), Ui.dp(this,3), Ui.dp(this,10), Ui.dp(this,5));
         safe.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        root.addView(buildHeader(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,82)));
-        root.addView(buildCategories(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,84)));
+        root.addView(buildHeader(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,78)));
+        root.addView(buildCategories(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,78)));
 
         pager = new AiPagerView(this);
         root.addView(pager, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        LinearLayout.LayoutParams guideLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,94));
-        guideLp.setMargins(0, Ui.dp(this,3), 0, 0);
-        root.addView(buildGuideBanner(), guideLp);
-
-        LinearLayout.LayoutParams bottomLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,82));
+        LinearLayout.LayoutParams bottomLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,76));
         bottomLp.topMargin = Ui.dp(this,6);
         root.addView(buildBottomBar(), bottomLp);
         return safe;
@@ -111,6 +107,13 @@ public class MainActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(Ui.dp(this,6), Ui.dp(this,5), Ui.dp(this,5), Ui.dp(this,2));
+
+        ImageView brain = new ImageView(this);
+        brain.setImageResource(R.drawable.guide_brain);
+        brain.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        LinearLayout.LayoutParams brainLp = new LinearLayout.LayoutParams(Ui.dp(this,58), Ui.dp(this,58));
+        brainLp.setMargins(0,0,Ui.dp(this,8),0);
+        header.addView(brain, brainLp);
 
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
@@ -179,7 +182,7 @@ public class MainActivity extends Activity {
     }
 
     private void addCategory(LinearLayout row, String cat, int accentIndex) {
-        TextView b = Ui.text(this, cat, 10.4f, Color.WHITE, true);
+        TextView b = Ui.text(this, cat, 11.4f, Color.WHITE, true);
         b.setGravity(Gravity.CENTER);
         b.setSingleLine(true);
         b.setBackground(Ui.rounded(Color.argb(218,4,16,33), accents[accentIndex % accents.length], 13, 1.2f, this));
@@ -241,7 +244,7 @@ public class MainActivity extends Activity {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
         TextView g = Ui.text(this,glyph,28,color,true); g.setGravity(Gravity.CENTER);
-        TextView l = Ui.text(this,label,11.5f,color,true); l.setGravity(Gravity.CENTER);
+        TextView l = Ui.text(this,label,12.3f,color,true); l.setGravity(Gravity.CENTER);
         box.addView(g,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1.12f));
         box.addView(l,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,.72f));
         box.setOnClickListener(listener);
