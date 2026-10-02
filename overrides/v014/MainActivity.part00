@@ -1,0 +1,331 @@
+package com.juanma.centralia;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.Settings;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.text.Collator;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+public class MainActivity extends Activity {
+    private static final int REQ_MIS_PROMPTS = 701;
+    private static final String PREFS = "central_ia_prefs";
+    private static final String KEY_PROMPTS_PACKAGE = "mis_prompts_package";
+    private static final String KEY_HISTORY = "open_history";
+
+    private final int[] accents = new int[] {
+            Color.rgb(0,232,255), Color.rgb(255,66,218), Color.rgb(167,70,255),
+            Color.rgb(255,155,66), Color.rgb(28,255,178), Color.rgb(70,130,255),
+            Color.rgb(255,65,95)
+    };
+
+    private AiRepository repository;
+    private List<AiEntry> allEntries;
+    private AiPagerView pager;
+    private String activeCategory = "TODAS";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().setStatusBarColor(Color.rgb(2,7,18));
+        getWindow().setNavigationBarColor(Color.rgb(2,7,18));
+
+        repository = new AiRepository(this);
+        allEntries = repository.load();
+        ensureReferenceEntries();
+        setContentView(buildScreen());
+        renderEntries();
+    }
+
+    private View buildScreen() {
+        FrameLayout safe = new FrameLayout(this);
+        safe.setBackgroundColor(Color.rgb(1,7,18));
+        safe.setOnApplyWindowInsetsListener((v, insets) -> {
+            android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return insets;
+        });
+
+        ImageView background = new ImageView(this);
+        background.setImageResource(R.drawable.database_background);
+        background.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        background.setAlpha(.56f);
+        safe.addView(background, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        View shade = new View(this);
+        shade.setBackgroundColor(Color.argb(82, 0, 5, 20));
+        safe.addView(shade, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(Ui.dp(this,10), Ui.dp(this,3), Ui.dp(this,10), Ui.dp(this,5));
+        safe.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        root.addView(buildHeader(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,82)));
+        root.addView(buildCategories(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,84)));
+
+        pager = new AiPagerView(this);
+        root.addView(pager, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        LinearLayout.LayoutParams guideLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,94));
+        guideLp.setMargins(0, Ui.dp(this,3), 0, 0);
+        root.addView(buildGuideBanner(), guideLp);
+
+        LinearLayout.LayoutParams bottomLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this,82));
+        bottomLp.topMargin = Ui.dp(this,6);
+        root.addView(buildBottomBar(), bottomLp);
+        return safe;
+    }
+
+    private View buildHeader() {
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(Ui.dp(this,6), Ui.dp(this,5), Ui.dp(this,5), Ui.dp(this,2));
+
+        LinearLayout titles = new LinearLayout(this);
+        titles.setOrientation(LinearLayout.VERTICAL);
+        titles.setGravity(Gravity.CENTER);
+
+        SpannableString branded = new SpannableString("CENTRAL IA");
+        branded.setSpan(new ForegroundColorSpan(accents[0]), 0, 8, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        branded.setSpan(new ForegroundColorSpan(accents[1]), 8, 10, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextView title = Ui.text(this, "", 31, Color.WHITE, true);
+        title.setText(branded);
+        title.setGravity(Gravity.CENTER);
+        title.setSingleLine(true);
+
+        TextView sub = Ui.text(this, "TODAS TUS INTELIGENCIAS EN UN SOLO LUGAR", 10.8f, Color.rgb(196,220,246), false);
+        sub.setGravity(Gravity.CENTER);
+        sub.setSingleLine(true);
+        titles.addView(title, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.18f));
+        titles.addView(sub, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, .72f));
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+        tp.setMargins(Ui.dp(this,4),0,Ui.dp(this,7),0);
+        header.addView(titles, tp);
+
+        TextView search = makeRoundButton("⌕", accents[0], 48);
+        search.setOnClickListener(v -> showSearch());
+        header.addView(search, new LinearLayout.LayoutParams(Ui.dp(this,48), Ui.dp(this,48)));
+        return header;
+    }
+
+    private TextView makeRoundButton(String glyph, int accent, int sizeDp) {
+        TextView t = Ui.text(this, glyph, sizeDp >= 42 ? 27 : 22, Color.WHITE, true);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(Ui.rounded(Color.argb(220,5,16,34), accent, sizeDp / 2f, 1.4f, this));
+        t.setClickable(true);
+        t.setFocusable(true);
+        return t;
+    }
+
+    private View buildCategories() {
+        LinearLayout area = new LinearLayout(this);
+        area.setOrientation(LinearLayout.VERTICAL);
+        area.setGravity(Gravity.CENTER);
+        area.setPadding(0, Ui.dp(this,3), 0, Ui.dp(this,3));
+
+        LinearLayout first = categoryRow();
+        addCategory(first,"TODAS",0);
+        addCategory(first,"TEXTO",1);
+        addCategory(first,"IMÁGENES",4);
+        addCategory(first,"VÍDEO",3);
+        area.addView(first, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        LinearLayout second = categoryRow();
+        addCategory(second,"INVESTIGACIÓN",5);
+        addCategory(second,"PROGRAMACIÓN",6);
+        addCategory(second,"OTRAS",2);
+        LinearLayout.LayoutParams secondLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        secondLp.topMargin = Ui.dp(this,4);
+        area.addView(second, secondLp);
+        return area;
+    }
+
+    private LinearLayout categoryRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        return row;
+    }
+
+    private void addCategory(LinearLayout row, String cat, int accentIndex) {
+        TextView b = Ui.text(this, cat, 10.4f, Color.WHITE, true);
+        b.setGravity(Gravity.CENTER);
+        b.setSingleLine(true);
+        b.setBackground(Ui.rounded(Color.argb(218,4,16,33), accents[accentIndex % accents.length], 13, 1.2f, this));
+        b.setOnClickListener(v -> { activeCategory = cat; if (pager != null) pager.firstPage(); renderEntries(); });
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+        bp.setMargins(Ui.dp(this,3),0,Ui.dp(this,3),0);
+        row.addView(b,bp);
+    }
+
+    private View buildGuideBanner() {
+        LinearLayout banner = new LinearLayout(this);
+        banner.setGravity(Gravity.CENTER_VERTICAL);
+        banner.setPadding(Ui.dp(this,8),Ui.dp(this,7),Ui.dp(this,8),Ui.dp(this,7));
+        banner.setBackground(Ui.rounded(Color.argb(224,4,15,33), accents[2], 18, 1.2f, this));
+
+        ImageView brain = new ImageView(this);
+        brain.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        brain.setImageResource(R.drawable.guide_brain);
+        banner.addView(brain, new LinearLayout.LayoutParams(Ui.dp(this,78), Ui.dp(this,78)));
+
+        LinearLayout text = new LinearLayout(this);
+        text.setOrientation(LinearLayout.VERTICAL);
+        text.setGravity(Gravity.CENTER_VERTICAL);
+        TextView a = Ui.text(this,"Encuentra la IA ideal
+para cada tarea",15.5f,Color.rgb(203,240,255),true);
+        a.setMaxLines(2);
+        TextView b = Ui.text(this,"Organiza, compara y accede
+rápidamente a todas tus IAs.",10.3f,Color.rgb(207,220,244),false);
+        b.setMaxLines(2);
+        text.addView(a);
+        text.addView(b);
+        LinearLayout.LayoutParams txt = new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f);
+        txt.setMargins(Ui.dp(this,10),0,Ui.dp(this,8),0);
+        banner.addView(text,txt);
+
+        Button guide = new Button(this);
+        guide.setText("✦  GUÍA DE USO  ›");
+        guide.setTextColor(Color.WHITE);
+        guide.setTextSize(11.5f);
+        guide.setAllCaps(false);
+        guide.setPadding(0,0,0,0);
+        guide.setBackground(Ui.rounded(Color.argb(235,6,28,65), accents[0], 15, 1.2f, this));
+        guide.setOnClickListener(v -> showGuide());
+        banner.addView(guide,new LinearLayout.LayoutParams(Ui.dp(this,126),Ui.dp(this,52)));
+        return banner;
+    }
+
+    private View buildBottomBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setGravity(Gravity.CENTER);
+        bar.setPadding(Ui.dp(this,10),Ui.dp(this,5),Ui.dp(this,10),Ui.dp(this,5));
+        bar.setBackground(Ui.rounded(Color.argb(230,4,13,29), accents[2], 20, 1.2f, this));
+        bar.addView(bottom("⌂", "INICIO", accents[0], v -> { activeCategory="TODAS"; pager.firstPage(); renderEntries(); }), new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f));
+        bar.addView(bottom("◷", "HISTORIAL", accents[3], v -> showHistory()), new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f));
+        bar.addView(bottom("⚙", "AJUSTES", accents[1], v -> showMainMenu()), new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f));
+        return bar;
+    }
+
+    private View bottom(String glyph, String label, int color, View.OnClickListener listener) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        TextView g = Ui.text(this,glyph,28,color,true); g.setGravity(Gravity.CENTER);
+        TextView l = Ui.text(this,label,11.5f,color,true); l.setGravity(Gravity.CENTER);
+        box.addView(g,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1.12f));
+        box.addView(l,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,.72f));
+        box.setOnClickListener(listener);
+        return box;
+    }
+
+    private void renderEntries() {
+        if (pager == null) return;
+        List<AiEntry> filtered = new ArrayList<>();
+        for (AiEntry e : allEntries) {
+            if ("TODAS".equals(activeCategory) || activeCategory.equals(e.category) || ("FAVORITOS".equals(activeCategory) && e.favorite)) filtered.add(e);
+        }
+        if ("TODAS".equals(activeCategory)) {
+            Collections.sort(filtered, Comparator.comparingInt(this::preferredRank));
+        }
+        pager.setData(filtered, this::makeAiTile, this::makeToolTile);
+    }
+
+    private int preferredRank(AiEntry e) {
+        String n = e.name.toLowerCase(Locale.ROOT);
+        if (n.contains("chatgpt")) return 0;
+        if (n.contains("claude")) return 1;
+        if (n.contains("gemini")) return 2;
+        if (n.contains("copilot")) return 3;
+        if (n.contains("perplex")) return 4;
+        if (n.contains("runway")) return 5;
+        if (n.equals("suno") || n.contains("suno")) return 6;
+        if (n.contains("eleven")) return 7;
+        if (n.contains("stable")) return 8;
+        if (n.contains("midjourney")) return 20;
+        if (n.contains("dall")) return 21;
+        if (n.contains("leonardo")) return 22;
+        return 100 + Math.abs(n.hashCode() % 1000);
+    }
+
+    private View makeAiTile(AiEntry entry) {
+        int accent = accents[Math.abs(entry.name.hashCode()) % accents.length];
+        NeonTile tile = new NeonTile(this, accent);
+        tile.setTitle(entry.name);
+        tile.setSubtitle(descriptionFor(entry));
+        Drawable d = getInstalledIcon(entry.packageName);
+        if (d != null) tile.setIcon(d); else tile.setGlyph(glyphFor(entry), accent);
+        tile.setOnClickListener(v -> openAi(entry));
+        tile.setMenuVisible(false);
+        tile.setOnLongClickListener(v -> { editEntry(entry); return true; });
+        return tile;
+    }
+
+    private View makeToolTile(int index) {
+        NeonTile tile;
+        if (index == 0) {
+            tile = new NeonTile(this, accents[1]);
+            tile.setIconResource(R.drawable.mis_prompts_icon);
+            tile.setTitle("Mis Prompts");
+            tile.setSubtitle("Abrir aplicación");
+            tile.setOnClickListener(v -> openMisPrompts());
+        } else if (index == 1) {
+            tile = new NeonTile(this, accents[0]);
+            tile.setGlyph("＋", accents[0]);
+            tile.setTitle("Añadir IA");
+            tile.setSubtitle("Incorpora nuevas
+inteligencias");
+            tile.setOnClickListener(v -> showAddDialog());
+        } else {
+            tile = new NeonTile(this, accents[3]);
+            tile.setGlyph("☆", accents[3]);
+            tile.setTitle("Favoritos");
+            tile.setSubtitle("Tus IAs preferidas");
+            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });
+        }
+        tile.setMenuVisible(false);
+        return tile;
+    }
+
+    private String glyphFor(AiEntry e) {
+        String n = e.name.toLowerCase(Locale.ROOT);
+        if (n.contains("midjourney")) return "◭";
+        if (n.contains("dall")) return "✦";
+        if (n.contains("runway")) return "R";
+        if (n.contains("suno")) return "♫";
+        if (n.contains("eleven")) return "Ⅲ";
+        if (n.contains("stable")) return "●";
+        return "○";
+    }
+
