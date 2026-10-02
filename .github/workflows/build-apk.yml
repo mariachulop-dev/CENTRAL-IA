@@ -50,6 +50,12 @@ jobs:
           mkdir build-src
           unzip -q CENTRAL_IA_Android_v0.1_source.zip -d build-src
 
+      - name: Apply final agreed UI patch
+        shell: bash
+        run: |
+          base64 --decode patch/centralia-ui-v012.tar.gz.b64 > /tmp/centralia-ui-v012-patch.tar.gz
+          tar -xzf /tmp/centralia-ui-v012-patch.tar.gz -C build-src/CENTRAL_IA_Android
+
       - name: Apply CENTRAL IA icon and version
         shell: bash
         run: |
@@ -71,8 +77,10 @@ jobs:
 
           gradle = Path("build-src/CENTRAL_IA_Android/app/build.gradle")
           text = gradle.read_text()
-          text = text.replace("versionCode 1", "versionCode 2")
-          text = text.replace("versionName '0.1.0'", "versionName '0.1.1'")
+          text = text.replace("versionCode 1", "versionCode 3")
+          text = text.replace("versionCode 2", "versionCode 3")
+          text = text.replace("versionName '0.1.0'", "versionName '0.1.2'")
+          text = text.replace("versionName '0.1.1'", "versionName '0.1.2'")
           gradle.write_text(text)
           PY
 
@@ -83,13 +91,13 @@ jobs:
       - name: Verify APK exists
         run: |
           test -f build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk
-          cp build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk CENTRAL-IA-v0.1.1-debug.apk
-          ls -lh CENTRAL-IA-v0.1.1-debug.apk
+          cp build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk CENTRAL-IA-v0.1.2-debug.apk
+          ls -lh CENTRAL-IA-v0.1.2-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: CENTRAL-IA-v0.1.1-APK
-          path: CENTRAL-IA-v0.1.1-debug.apk
+          name: CENTRAL-IA-v0.1.2-APK
+          path: CENTRAL-IA-v0.1.2-debug.apk
           if-no-files-found: error
           retention-days: 7
