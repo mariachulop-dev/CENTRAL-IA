@@ -1,0 +1,272 @@
+    private String descriptionFor(AiEntry e) {
+        String n=e.name.toLowerCase(Locale.ROOT);
+        if(n.contains("chatgpt"))return "Conversación\nAvanzada";
+        if(n.contains("claude"))return "Análisis y\nEscritura";
+        if(n.contains("gemini"))return "Google IA\nMultimodal";
+        if(n.contains("copilot"))return "Productividad\nMicrosoft";
+        if(n.contains("perplex"))return "Investigación\nen Tiempo Real";
+        if(n.contains("midjourney"))return "Generación de\nImágenes";
+        if(n.contains("dall"))return "Imágenes\nCreativas";
+        if(n.contains("leonardo"))return "Arte e\nIlustración";
+        if(n.contains("runway"))return "Vídeo con IA";
+        if(n.contains("suno"))return "Música con IA";
+        if(n.contains("eleven"))return "Voz y Audio IA";
+        if(n.contains("stable"))return "Imágenes\nPersonalizadas";
+        return e.category;
+    }
+
+    private void ensureReferenceEntries() {
+        addIfMissing(new AiEntry("dalle", "DALL-E", "IMÁGENES", "com.openai.chatgpt", "https://chatgpt.com", false));
+        addIfMissing(new AiEntry("stable", "Stable Diffusion", "IMÁGENES", null, "https://stability.ai", false));
+        repository.save(allEntries);
+    }
+
+    private void addIfMissing(AiEntry wanted) {
+        for (AiEntry e : allEntries) if (wanted.id.equals(e.id) || wanted.name.equalsIgnoreCase(e.name)) return;
+        allEntries.add(wanted);
+    }
+
+    private boolean isInstalled(String packageName) {
+        if (packageName == null) return false;
+        try {
+            getPackageManager().getPackageInfo(packageName, 0);
+            return getPackageManager().getLaunchIntentForPackage(packageName) != null;
+        } catch (Exception e) { return false; }
+    }
+
+    private Drawable getInstalledIcon(String packageName) {
+        if (packageName == null) return null;
+        try { return getPackageManager().getApplicationIcon(packageName); }
+        catch (Exception e) { return null; }
+    }
+
+    private void openAi(AiEntry e) {
+        recordHistory(e.name);
+        if (e.packageName != null && launchPackageInSameTask(e.packageName, false)) return;
+        if (e.webUrl != null && !e.webUrl.trim().isEmpty()) {
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(e.webUrl))); return; }
+            catch (ActivityNotFoundException ignored) {}
+        }
+        Toast.makeText(this,"No se encontró aplicación instalada ni enlace web.",Toast.LENGTH_LONG).show();
+    }
+
+    private void openMisPrompts() {
+        String saved = getSharedPreferences(PREFS,MODE_PRIVATE).getString(KEY_PROMPTS_PACKAGE,null);
+        if (saved != null && launchPackageInSameTask(saved, true)) {
+            recordHistory("Mis Prompts");
+            return;
+        }
+
+        PackageManager pm = getPackageManager();
+        Intent query = new Intent(Intent.ACTION_MAIN);
+        query.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> apps = pm.queryIntentActivities(query, 0);
+        for (ResolveInfo r : apps) {
+            String label = r.loadLabel(pm).toString().trim().toLowerCase(Locale.ROOT);
+            if (label.equals("mis prompts") || label.equals("misprompts") || label.contains("mis prompts")) {
+                String pkg = r.activityInfo.packageName;
+                getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString(KEY_PROMPTS_PACKAGE,pkg).apply();
+                if (launchPackageInSameTask(pkg, true)) {
+                    recordHistory("Mis Prompts");
+                    return;
+                }
+            }
+        }
+        showChooseAppForMisPrompts();
+    }
+
+    private boolean launchPackageInSameTask(String packageName, boolean forResult) {
+        try {
+            PackageManager pm = getPackageManager();
+            Intent q = new Intent(Intent.ACTION_MAIN);
+            q.addCategory(Intent.CATEGORY_LAUNCHER);
+            q.setPackage(packageName);
+            List<ResolveInfo> infos = pm.queryIntentActivities(q, 0);
+            if (infos == null || infos.isEmpty()) return false;
+            ResolveInfo r = infos.get(0);
+            Intent i = new Intent(Intent.ACTION_MAIN);
+            i.addCategory(Intent.CATEGORY_LAUNCHER);
+            i.setComponent(new ComponentName(r.activityInfo.packageName, r.activityInfo.name));
+            i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            if (forResult) startActivityForResult(i, REQ_MIS_PROMPTS); else startActivity(i);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void showChooseAppForMisPrompts() {
+        Toast.makeText(this,"Selecciona una vez la app Mis Prompts para vincularla.",Toast.LENGTH_LONG).show();
+        chooseInstalledApp((label, packageName) -> {
+            getSharedPreferences(PREFS,MODE_PRIVATE).edit().putString(KEY_PROMPTS_PACKAGE,packageName).apply();
+            if (launchPackageInSameTask(packageName, true)) recordHistory("Mis Prompts");
+        });
+    }
+
+    private interface AppChoice { void chosen(String label, String packageName); }
+
+    private void chooseInstalledApp(AppChoice callback) {
+        PackageManager pm = getPackageManager();
+        Intent q = new Intent(Intent.ACTION_MAIN);
+        q.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> infos = pm.queryIntentActivities(q, 0);
+        List<AppRow> rows = new ArrayList<>();
+        for (ResolveInfo r : infos) {
+            if (r.activityInfo == null) continue;
+            String pkg = r.activityInfo.packageName;
+            if (pkg.equals(getPackageName())) continue;
+            rows.add(new AppRow(r.loadLabel(pm).toString(), pkg));
+        }
+        Collator collator = Collator.getInstance(new Locale("es","ES"));
+        Collections.sort(rows, (a,b) -> collator.compare(a.label,b.label));
+        String[] labels = new String[rows.size()];
+        for (int i=0;i<rows.size();i++) labels[i] = rows.get(i).label;
+        new AlertDialog.Builder(this)
+                .setTitle("Seleccionar aplicación instalada")
+                .setItems(labels, (d, which) -> callback.chosen(rows.get(which).label, rows.get(which).pkg))
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private static class AppRow {
+        final String label, pkg;
+        AppRow(String label,String pkg){this.label=label;this.pkg=pkg;}
+    }
+
+    private void showAddDialog() {
+        LinearLayout form = form();
+        EditText name = field("Nombre de la IA");
+        EditText url = field("URL web de respaldo (https://...)");
+        EditText pkg = field("Paquete Android (opcional)");
+        TextView selected = Ui.text(this,"Sin aplicación seleccionada",11,Color.LTGRAY,false);
+        Button pick = new Button(this); pick.setText("Elegir app instalada");
+        pick.setOnClickListener(v -> chooseInstalledApp((label, packageName) -> {
+            pkg.setText(packageName); selected.setText(label + " · " + packageName);
+            if (name.getText().toString().trim().isEmpty()) name.setText(label);
+        }));
+        form.addView(name); form.addView(url); form.addView(pkg); form.addView(pick); form.addView(selected);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Añadir IA")
+                .setView(form)
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Añadir", null)
+                .create();
+        dialog.setOnShowListener(x -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String n = name.getText().toString().trim();
+            if (n.isEmpty()) { name.setError("Indica un nombre"); return; }
+            String u = normalizeUrl(url.getText().toString().trim());
+            String p = pkg.getText().toString().trim();
+            allEntries.add(repository.create(n,"OTRAS",p.isEmpty()?null:p,u.isEmpty()?null:u));
+            repository.save(allEntries); renderEntries(); dialog.dismiss();
+        }));
+        dialog.show();
+    }
+
+    private void showManageDialog() {
+        String[] names = new String[allEntries.size()];
+        for (int i=0;i<allEntries.size();i++) names[i] = allEntries.get(i).name;
+        new AlertDialog.Builder(this)
+                .setTitle("Gestionar IAs")
+                .setItems(names,(d,which)->editEntry(allEntries.get(which)))
+                .setNegativeButton("Cerrar",null)
+                .show();
+    }
+
+    private void editEntry(AiEntry entry) {
+        String[] actions = {entry.favorite ? "Quitar de favoritos" : "Añadir a favoritos", "Editar acceso", "Eliminar acceso"};
+        new AlertDialog.Builder(this).setTitle(entry.name).setItems(actions,(d,w)->{
+            if (w==0) { entry.favorite=!entry.favorite; repository.save(allEntries); renderEntries(); }
+            else if (w==1) showEditFields(entry);
+            else confirmDelete(entry);
+        }).show();
+    }
+
+    private void showEditFields(AiEntry e) {
+        LinearLayout form = form();
+        EditText name = field("Nombre"); name.setText(e.name);
+        EditText url = field("URL web"); url.setText(e.webUrl == null ? "" : e.webUrl);
+        EditText pkg = field("Paquete Android"); pkg.setText(e.packageName == null ? "" : e.packageName);
+        Button pick = new Button(this); pick.setText("Elegir otra app instalada");
+        pick.setOnClickListener(v -> chooseInstalledApp((label, packageName) -> pkg.setText(packageName)));
+        form.addView(name);form.addView(url);form.addView(pkg);form.addView(pick);
+        new AlertDialog.Builder(this).setTitle("Editar " + e.name).setView(form)
+                .setNegativeButton("Cancelar",null)
+                .setPositiveButton("Guardar",(d,w)->{
+                    e.name=name.getText().toString().trim();
+                    e.webUrl=normalizeUrl(url.getText().toString().trim());
+                    if (e.webUrl.isEmpty()) e.webUrl=null;
+                    e.packageName=pkg.getText().toString().trim(); if(e.packageName.isEmpty()) e.packageName=null;
+                    repository.save(allEntries);renderEntries();
+                }).show();
+    }
+
+    private void confirmDelete(AiEntry e) {
+        new AlertDialog.Builder(this).setTitle("Eliminar acceso")
+                .setMessage("Se eliminará únicamente el acceso de CENTRAL IA. No se desinstalará la aplicación " + e.name + ".")
+                .setNegativeButton("Cancelar",null)
+                .setPositiveButton("Eliminar",(d,w)->{allEntries.remove(e);repository.save(allEntries);renderEntries();})
+                .show();
+    }
+
+    private LinearLayout form() {
+        LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL);
+        int p=Ui.dp(this,18);form.setPadding(p,Ui.dp(this,6),p,0);return form;
+    }
+
+    private EditText field(String hint) {
+        EditText e=new EditText(this);e.setHint(hint);e.setSingleLine(true);return e;
+    }
+
+    private String normalizeUrl(String u) {
+        if (u == null || u.trim().isEmpty()) return "";
+        u=u.trim();
+        if (!u.startsWith("http://") && !u.startsWith("https://")) u="https://"+u;
+        return u;
+    }
+
+    private void showSearch() {
+        EditText q = field("Buscar IA");
+        new AlertDialog.Builder(this).setTitle("Buscar").setView(q)
+                .setNegativeButton("Cancelar",null)
+                .setPositiveButton("Buscar",(d,w)->{
+                    String term=q.getText().toString().trim().toLowerCase(Locale.ROOT);
+                    for(AiEntry e:allEntries) if(e.name.toLowerCase(Locale.ROOT).contains(term)){openAi(e);return;}
+                    Toast.makeText(this,"No se encontró ninguna IA con ese nombre.",Toast.LENGTH_LONG).show();
+                }).show();
+    }
+
+    private void showGuide() {
+        new AlertDialog.Builder(this).setTitle("Cómo funciona CENTRAL IA")
+                .setMessage("Pulsa una IA para abrirla. CENTRAL IA intenta primero abrir la aplicación instalada y usa la web solo como respaldo.\n\nAñade tantas IAs como quieras: se crean nuevas páginas automáticamente. Usa las flechas o desliza lateralmente para cambiar de página.\n\nMis Prompts se abre dentro de la misma tarea de Android; al cerrarla o volver atrás, CENTRAL IA queda debajo para recuperar el escritorio principal.")
+                .setPositiveButton("Entendido",null).show();
+    }
+
+    private void showHistory() {
+        Set<String> hist = getSharedPreferences(PREFS,MODE_PRIVATE).getStringSet(KEY_HISTORY,null);
+        String message = (hist == null || hist.isEmpty()) ? "Todavía no hay accesos recientes." : joinLines(hist);
+        new AlertDialog.Builder(this).setTitle("Historial reciente").setMessage(message).setPositiveButton("Cerrar",null).show();
+    }
+
+    private void recordHistory(String name) {
+        Set<String> old = getSharedPreferences(PREFS,MODE_PRIVATE).getStringSet(KEY_HISTORY,null);
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        out.add(name);
+        if (old != null) for (String s : old) if (out.size() < 8) out.add(s);
+        getSharedPreferences(PREFS,MODE_PRIVATE).edit().putStringSet(KEY_HISTORY,out).apply();
+    }
+
+    private String joinLines(Set<String> values) {
+        StringBuilder b = new StringBuilder();
+        for (String s : values) { if (b.length() > 0) b.append("\n"); b.append("• ").append(s); }
+        return b.toString();
+    }
+
+    private void showMainMenu() {
+        String[] actions={"Vincular Mis Prompts","Ajustes del sistema de CENTRAL IA"};
+        new AlertDialog.Builder(this).setTitle("CENTRAL IA").setItems(actions,(d,w)->{
+            if(w==0)showChooseAppForMisPrompts();
+            else startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())));
+        }).show();
+    }
+}
