@@ -32,16 +32,17 @@ public class NeonTile extends FrameLayout {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setGravity(Gravity.CENTER);
         int p = Ui.dp(context, 7);
-        content.setPadding(p, Ui.dp(context, 7), p, Ui.dp(context, 6));
+        content.setPadding(p, Ui.dp(context, 7), p, Ui.dp(context, 7));
         addView(content, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
         FrameLayout iconBox = new FrameLayout(context);
-        LinearLayout.LayoutParams ibp = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.24f);
+        LinearLayout.LayoutParams ibp = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, Ui.dp(context, 55));
+        ibp.bottomMargin = Ui.dp(context, 2);
         content.addView(iconBox, ibp);
 
         icon = new ImageView(context);
         icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        FrameLayout.LayoutParams ip = new FrameLayout.LayoutParams(Ui.dp(context, 58), Ui.dp(context, 58), Gravity.CENTER);
+        FrameLayout.LayoutParams ip = new FrameLayout.LayoutParams(Ui.dp(context, 50), Ui.dp(context, 50), Gravity.CENTER);
         iconBox.addView(icon, ip);
 
         glyph = Ui.text(context, "", 36, accent, true);
@@ -49,17 +50,21 @@ public class NeonTile extends FrameLayout {
         glyph.setVisibility(View.GONE);
         iconBox.addView(glyph, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-        title = Ui.text(context, "", 15.5f, Color.WHITE, true);
+        title = Ui.text(context, "", 16.5f, Color.WHITE, true);
         title.setGravity(Gravity.CENTER);
         title.setMaxLines(2);
         title.setHorizontallyScrolling(false);
-        content.addView(title, new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, .64f));
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+        titleLp.topMargin = Ui.dp(context, 1);
+        content.addView(title, titleLp);
 
-        subtitle = Ui.text(context, "", 10.8f, Color.rgb(207, 221, 246), false);
+        subtitle = Ui.text(context, "", 12.0f, Color.rgb(207, 221, 246), false);
         subtitle.setGravity(Gravity.CENTER);
-        subtitle.setMaxLines(3);
+        subtitle.setMaxLines(2);
         subtitle.setHorizontallyScrolling(false);
-        content.addView(subtitle, new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, .78f));
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
+        subLp.topMargin = Ui.dp(context, 2);
+        content.addView(subtitle, subLp);
 
         menu = Ui.text(context, "⋮", 18, Color.rgb(176, 236, 255), true);
         menu.setGravity(Gravity.CENTER);
