@@ -73,8 +73,17 @@ jobs:
         shell: bash
         run: |
           APPDIR="build-src/CENTRAL_IA_Android/app"
-          mkdir -p "$APPDIR/src/main/res/mipmap-nodpi"
-          base64 --decode assets/icon96.b64 > "$APPDIR/src/main/res/mipmap-nodpi/ic_launcher.png"
+          RESDIR="$APPDIR/src/main/res"
+          mkdir -p "$RESDIR/mipmap-nodpi"
+
+          # Use the approved technological brain image as the app icon,
+          # without the old white border/margin.
+          GUIDE_ICON="$(find "$RESDIR" -type f -name 'guide_brain.*' | head -n 1)"
+          test -n "$GUIDE_ICON"
+          rm -f "$RESDIR/mipmap-nodpi"/ic_launcher.*
+          EXT="${GUIDE_ICON##*.}"
+          cp "$GUIDE_ICON" "$RESDIR/mipmap-nodpi/ic_launcher.$EXT"
+
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -90,8 +99,8 @@ jobs:
 
           gradle = Path("build-src/CENTRAL_IA_Android/app/build.gradle")
           text = gradle.read_text()
-          text = re.sub(r"versionCode\s+\d+", "versionCode 5", text)
-          text = re.sub(r"versionName\s+'[^']+'", "versionName '0.1.5'", text)
+          text = re.sub(r"versionCode\s+\d+", "versionCode 6", text)
+          text = re.sub(r"versionName\s+'[^']+'", "versionName '0.1.6'", text)
           gradle.write_text(text)
           PY
 
@@ -104,14 +113,14 @@ jobs:
         run: |
           APK="build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk"
           test -f "$APK"
-          cp "$APK" CENTRAL-IA-v0.1.5-debug.apk
-          unzip -l CENTRAL-IA-v0.1.5-debug.apk | grep -E "database_background|mis_prompts_icon|classes"
-          ls -lh CENTRAL-IA-v0.1.5-debug.apk
+          cp "$APK" CENTRAL-IA-v0.1.6-debug.apk
+          unzip -l CENTRAL-IA-v0.1.6-debug.apk | grep -E "database_background|mis_prompts_icon|ic_launcher|classes"
+          ls -lh CENTRAL-IA-v0.1.6-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: CENTRAL-IA-v0.1.5-APK
-          path: CENTRAL-IA-v0.1.5-debug.apk
+          name: CENTRAL-IA-v0.1.6-APK
+          path: CENTRAL-IA-v0.1.6-debug.apk
           if-no-files-found: error
           retention-days: 7
