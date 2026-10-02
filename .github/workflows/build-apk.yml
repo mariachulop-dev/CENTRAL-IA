@@ -53,7 +53,7 @@ jobs:
       - name: Apply final agreed UI patch
         shell: bash
         run: |
-          base64 --decode patch/centralia-ui-v012.tar.gz.b64 > /tmp/centralia-ui-v013-patch.tar.gz
+          cat patch/v013/part* | base64 --decode > /tmp/centralia-ui-v013-patch.tar.gz
           tar -xzf /tmp/centralia-ui-v013-patch.tar.gz -C build-src/CENTRAL_IA_Android
 
       - name: Apply CENTRAL IA icon and version
