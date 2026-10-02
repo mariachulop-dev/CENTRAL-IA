@@ -203,11 +203,9 @@ public class MainActivity extends Activity {
         LinearLayout text = new LinearLayout(this);
         text.setOrientation(LinearLayout.VERTICAL);
         text.setGravity(Gravity.CENTER_VERTICAL);
-        TextView a = Ui.text(this,"Encuentra la IA ideal
-para cada tarea",15.5f,Color.rgb(203,240,255),true);
+        TextView a = Ui.text(this,"Encuentra la IA ideal\npara cada tarea",15.5f,Color.rgb(203,240,255),true);
         a.setMaxLines(2);
-        TextView b = Ui.text(this,"Organiza, compara y accede
-rápidamente a todas tus IAs.",10.3f,Color.rgb(207,220,244),false);
+        TextView b = Ui.text(this,"Organiza, compara y accede\nrápidamente a todas tus IAs.",10.3f,Color.rgb(207,220,244),false);
         b.setMaxLines(2);
         text.addView(a);
         text.addView(b);
@@ -304,8 +302,7 @@ rápidamente a todas tus IAs.",10.3f,Color.rgb(207,220,244),false);
             tile = new NeonTile(this, accents[0]);
             tile.setGlyph("＋", accents[0]);
             tile.setTitle("Añadir IA");
-            tile.setSubtitle("Incorpora nuevas
-inteligencias");
+            tile.setSubtitle("Incorpora nuevas\ninteligencias");
             tile.setOnClickListener(v -> showAddDialog());
         } else {
             tile = new NeonTile(this, accents[3]);
