@@ -15,6 +15,7 @@ jobs:
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,7 +33,6 @@ jobs:
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-          "$SDKMANAGER" --list_installed | grep -E "platforms;android-36|build-tools;36.0.0|platform-tools"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -50,21 +50,34 @@ jobs:
           mkdir build-src
           unzip -q CENTRAL_IA_Android_v0.1_source.zip -d build-src
 
-      - name: Apply final agreed UI patch
+      - name: Apply previous stable patch
         shell: bash
         run: |
           cat patch/v013/part* | base64 --decode > /tmp/centralia-ui-v013-patch.tar.gz
           tar -xzf /tmp/centralia-ui-v013-patch.tar.gz -C build-src/CENTRAL_IA_Android
 
-      - name: Apply CENTRAL IA icon and version
+      - name: Apply approved v0.1.4 interface
+        shell: bash
+        run: |
+          JAVA_DIR="build-src/CENTRAL_IA_Android/app/src/main/java/com/juanma/centralia"
+          RES_DIR="build-src/CENTRAL_IA_Android/app/src/main/res"
+          cp overrides/v014/AiPagerView.java "$JAVA_DIR/AiPagerView.java"
+          cp overrides/v014/NeonTile.java "$JAVA_DIR/NeonTile.java"
+          cat overrides/v014/MainActivity.part00 overrides/v014/MainActivity.part01 > "$JAVA_DIR/MainActivity.java"
+
+          mkdir -p "$RES_DIR/drawable-nodpi"
+          cat overrides/v014/bgpart00 overrides/v014/bgpart01 overrides/v014/bgpart02 overrides/v014/bgpart03 | base64 --decode > "$RES_DIR/drawable-nodpi/database_background.webp"
+          test -s "$RES_DIR/drawable-nodpi/database_background.webp"
+
+      - name: Apply app icon and version
         shell: bash
         run: |
           APPDIR="build-src/CENTRAL_IA_Android/app"
           mkdir -p "$APPDIR/src/main/res/mipmap-nodpi"
           base64 --decode assets/icon96.b64 > "$APPDIR/src/main/res/mipmap-nodpi/ic_launcher.png"
-          test -s "$APPDIR/src/main/res/mipmap-nodpi/ic_launcher.png"
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           manifest = Path("build-src/CENTRAL_IA_Android/app/src/main/AndroidManifest.xml")
           text = manifest.read_text()
@@ -77,68 +90,22 @@ jobs:
 
           gradle = Path("build-src/CENTRAL_IA_Android/app/build.gradle")
           text = gradle.read_text()
-          import re
           text = re.sub(r"versionCode\s+\d+", "versionCode 5", text)
           text = re.sub(r"versionName\s+'[^']+'", "versionName '0.1.4'", text)
           gradle.write_text(text)
-          PY
-
-      - name: Apply UI cleanup v0.1.4
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p=Path("build-src/CENTRAL_IA_Android/app/src/main/java/com/juanma/centralia/MainActivity.java")
-          t=p.read_text()
-
-          # Dejar un solo acceso a Ajustes: el de la barra inferior.
-          t=re.sub(r'\n\s*TextView\s+settings\s*=\s*makeRoundButton\("⚙".*?header\.addView\(settings,\s*sp\);', '', t, flags=re.S)
-          t=re.sub(r'\n\s*TextView\s+(?:menu|hamburger)\s*=\s*makeRoundButton\("[☰≡]".*?header\.addView\((?:menu|hamburger).*?\);', '', t, flags=re.S)
-
-          # Quitar Gestionar IAs del escritorio: Favoritos ocupa su lugar y la cuarta celda queda anulada.
-          old = '        } else if (index == 2) {\n            tile = new NeonTile(this, accents[2]);\n            tile.setGlyph("▦", accents[0]);\n            tile.setTitle("Gestionar IAs");\n            tile.setSubtitle("Editar, ordenar y eliminar");\n            tile.setOnClickListener(v -> showManageDialog());\n        } else {\n            tile = new NeonTile(this, accents[3]);\n            tile.setGlyph("☆", accents[3]);\n            tile.setTitle("Favoritos");\n            tile.setSubtitle("Tus IAs preferidas");\n            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });\n        }'
-          new = '        } else if (index == 2) {\n            tile = new NeonTile(this, accents[3]);\n            tile.setGlyph("☆", accents[3]);\n            tile.setTitle("Favoritos");\n            tile.setSubtitle("Tus IAs preferidas");\n            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });\n        } else {\n            tile = new NeonTile(this, Color.TRANSPARENT);\n            tile.setVisibility(View.INVISIBLE);\n        }'
-          if old not in t:
-              raise SystemExit("No se encontró el bloque Gestionar/Favoritos esperado")
-          t=t.replace(old,new)
-          p.write_text(t)
-
-          # Mostrar el icono de Mis Prompts sin el recuadro exterior: recorte centrado y máscara circular.
-          p=Path("build-src/CENTRAL_IA_Android/app/src/main/java/com/juanma/centralia/NeonTile.java")
-          n=p.read_text()
-          n=n.replace("import android.graphics.Color;\n", "import android.graphics.Color;\nimport android.graphics.Outline;\n")
-          n=n.replace("import android.view.View;\n", "import android.view.View;\nimport android.view.ViewOutlineProvider;\n")
-          marker="    public void setGlyph(String value, int color) {"
-          method="    public void setIconResourceCropped(int resId) {\n        icon.setVisibility(View.VISIBLE);\n        glyph.setVisibility(View.GONE);\n        icon.setImageResource(resId);\n        icon.setScaleType(ImageView.ScaleType.CENTER_CROP);\n        icon.setScaleX(1.34f);\n        icon.setScaleY(1.34f);\n        icon.setClipToOutline(true);\n        icon.setOutlineProvider(new ViewOutlineProvider() {\n            @Override public void getOutline(View view, Outline outline) {\n                outline.setOval(0, 0, view.getWidth(), view.getHeight());\n            }\n        });\n    }\n\n"
-          if marker not in n:
-              raise SystemExit("No se encontró setGlyph en NeonTile")
-          n=n.replace(marker, method+marker)
-          p.write_text(n)
-
-          p=Path("build-src/CENTRAL_IA_Android/app/src/main/java/com/juanma/centralia/MainActivity.java")
-          t=p.read_text()
-          old_icon="tile.setIconResource(R.drawable.mis_prompts_icon);"
-          if old_icon not in t:
-              raise SystemExit("No se encontró el icono de Mis Prompts")
-          t=t.replace(old_icon, "tile.setIconResourceCropped(R.drawable.mis_prompts_icon);")
-          p.write_text(t)
-
-          # Recortar el blanco exterior del icono de Mis Prompts si ImageMagick está disponible.
-          import subprocess
-          icons=list(Path("build-src/CENTRAL_IA_Android/app/src/main/res").rglob("mis_prompts_icon.png"))
-          for icon in icons:
-              subprocess.run(["convert",str(icon),"-alpha","on","-fuzz","8%","-transparent","white","-trim","+repage",str(icon)],check=False)
           PY
 
       - name: Build debug APK
         working-directory: build-src/CENTRAL_IA_Android
         run: gradle --no-daemon clean assembleDebug
 
-      - name: Verify APK exists
+      - name: Verify APK
+        shell: bash
         run: |
-          test -f build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk
-          cp build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk CENTRAL-IA-v0.1.4-debug.apk
+          APK="build-src/CENTRAL_IA_Android/app/build/outputs/apk/debug/app-debug.apk"
+          test -f "$APK"
+          cp "$APK" CENTRAL-IA-v0.1.4-debug.apk
+          unzip -l CENTRAL-IA-v0.1.4-debug.apk | grep -E "database_background|mis_prompts_icon|classes"
           ls -lh CENTRAL-IA-v0.1.4-debug.apk
 
       - name: Upload APK
