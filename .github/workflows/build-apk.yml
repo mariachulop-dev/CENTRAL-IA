@@ -97,29 +97,8 @@ jobs:
           t=re.sub(r'\n\s*TextView\s+(?:menu|hamburger)\s*=\s*makeRoundButton\("[☰≡]".*?header\.addView\((?:menu|hamburger).*?\);', '', t, flags=re.S)
 
           # Quitar Gestionar IAs del escritorio: Favoritos ocupa su lugar y la cuarta celda queda anulada.
-          old='''        } else if (index == 2) {
-            tile = new NeonTile(this, accents[2]);
-            tile.setGlyph("▦", accents[0]);
-            tile.setTitle("Gestionar IAs");
-            tile.setSubtitle("Editar, ordenar y eliminar");
-            tile.setOnClickListener(v -> showManageDialog());
-        } else {
-            tile = new NeonTile(this, accents[3]);
-            tile.setGlyph("☆", accents[3]);
-            tile.setTitle("Favoritos");
-            tile.setSubtitle("Tus IAs preferidas");
-            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });
-        }'''
-          new='''        } else if (index == 2) {
-            tile = new NeonTile(this, accents[3]);
-            tile.setGlyph("☆", accents[3]);
-            tile.setTitle("Favoritos");
-            tile.setSubtitle("Tus IAs preferidas");
-            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });
-        } else {
-            tile = new NeonTile(this, Color.TRANSPARENT);
-            tile.setVisibility(View.INVISIBLE);
-        }'''
+          old = '        } else if (index == 2) {\n            tile = new NeonTile(this, accents[2]);\n            tile.setGlyph("▦", accents[0]);\n            tile.setTitle("Gestionar IAs");\n            tile.setSubtitle("Editar, ordenar y eliminar");\n            tile.setOnClickListener(v -> showManageDialog());\n        } else {\n            tile = new NeonTile(this, accents[3]);\n            tile.setGlyph("☆", accents[3]);\n            tile.setTitle("Favoritos");\n            tile.setSubtitle("Tus IAs preferidas");\n            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });\n        }'
+          new = '        } else if (index == 2) {\n            tile = new NeonTile(this, accents[3]);\n            tile.setGlyph("☆", accents[3]);\n            tile.setTitle("Favoritos");\n            tile.setSubtitle("Tus IAs preferidas");\n            tile.setOnClickListener(v -> { activeCategory="FAVORITOS"; pager.firstPage(); renderEntries(); });\n        } else {\n            tile = new NeonTile(this, Color.TRANSPARENT);\n            tile.setVisibility(View.INVISIBLE);\n        }'
           if old not in t:
               raise SystemExit("No se encontró el bloque Gestionar/Favoritos esperado")
           t=t.replace(old,new)
