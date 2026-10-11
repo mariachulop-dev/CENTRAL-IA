@@ -1,0 +1,31 @@
+name: Archive CENTRAL IA Project
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create complete project archive
+        shell: bash
+        run: |
+          zip -r CENTRAL-IA-project-v0.1.6.zip . -x ".git/*"
+          unzip -t CENTRAL-IA-project-v0.1.6.zip
+          ls -lh CENTRAL-IA-project-v0.1.6.zip
+
+      - name: Upload complete project archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: CENTRAL-IA-project-v0.1.6
+          path: CENTRAL-IA-project-v0.1.6.zip
+          if-no-files-found: error
+          retention-days: 7
