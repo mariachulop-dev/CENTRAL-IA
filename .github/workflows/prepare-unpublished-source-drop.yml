@@ -1,0 +1,39 @@
+name: Prepare unpublished source transfer
+
+on:
+  push:
+    branches: [descargator-env-check-20261020-1921]
+    paths: [.github/workflows/prepare-unpublished-source-drop.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create an unpublished transfer draft and verify anonymous access is blocked
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag = 'descargator-private-transfer-20261020';
+            const releases = await github.paginate(github.rest.repos.listReleases, {owner, repo, per_page: 100});
+            let release = releases.find(r => r.tag_name === tag);
+            if (release && !release.draft) throw new Error('Transfer release is published; refusing to use it.');
+            if (!release) {
+              const metadata = await github.rest.repos.get({owner, repo});
+              release = (await github.rest.repos.createRelease({
+                owner, repo, tag_name: tag,
+                target_commitish: metadata.data.default_branch,
+                name: 'DESCARGATOR — transferencia sin publicar',
+                body: 'Borrador de transferencia del proyecto. Adjuntar aquí el ZIP original y conservar siempre como borrador. No publicar este lanzamiento. El código y las claves no se añaden al repositorio ni a los registros de compilación.',
+                draft: true, prerelease: false, make_latest: 'false'
+              })).data;
+            }
+            const anonymous = await fetch(release.url, {headers: {Accept: 'application/vnd.github+json'}});
+            if (anonymous.status !== 404) throw new Error('Unpublished draft privacy check failed: HTTP ' + anonymous.status);
+            core.info(JSON.stringify({draft: release.draft, release_id: release.id, anonymous_status: anonymous.status, edit_url: 'https://github.com/' + owner + '/' + repo + '/releases/edit/' + release.id}));
